@@ -97,6 +97,21 @@ const obj = {
         });
     },
     /**
+     * 加载 JS 文件
+     * @param {String} scriptPath 
+     */
+    loadScript: async function (scriptPath) {
+        return new Promise(async (resolve, reject) => {
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            const scriptFile = await YeteDB.files.get({ name: scriptPath });
+            script.src = URL.createObjectURL(scriptFile.blob);
+            script.onload = resolve;
+            script.onerror = reject;
+            document.body.appendChild(script);
+        });
+    },
+    /**
      * 跳转到指定页面
      * @param {String} path 
      */
