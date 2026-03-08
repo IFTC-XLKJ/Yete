@@ -1,14 +1,33 @@
+const { add } = require("dexie");
+
+/**
+ * 自定义错误类
+ */
 class YeteError extends Error {
+    /**
+     * 构造函数
+     * @param {String} message 错误信息
+     */
     constructor(message) {
         super(message);
         this.name = 'YeteError';
     }
 }
-
+/**
+ * 页面基类
+ */
 class Page {
+    /**
+     * 构造函数
+     * @param {String} name 
+     */
     constructor(name) {
         this.name = name;
     }
+    /**
+     * 渲染页面
+     * @returns {HTMLElement}
+     */
     render() {
         return document.createElement('div', { className: 'page' }, this.name);
     }
@@ -16,6 +35,7 @@ class Page {
 
 const pages = [];
 const routes = [];
+const events = [];
 
 const obj = {
     /**
@@ -122,12 +142,102 @@ const obj = {
         if (page) {
             document.body.innerHTML = "";
             document.body.appendChild(page.page);
+            obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: false }));
         } else {
             document.body.innerHTML = "<center><h1>404 Not Found</h1><p>Power By Yete</p></center>";
+            obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: true }));
             throw new YeteError("The page not found.");
         }
-    }
+    },
+    /**
+     * 创建 UI 元素
+     * @param {String} tag 
+     * @param {Object} options 
+     * @returns {HTMLElement}
+     */
+    newElement: function (tag, options = {}) {
+        if (!UIElements[tag]) {
+            throw new YeteError(`The element ${tag} not found.`);
+        }
+        const element = document.createElement(UIElements[tag].html);
+        const style = UIElements[tag].style;
+        if (style) {
+            for (const key in style) {
+                element.style[key] = style[key];
+            }
+        }
+        for (const key in options) {
+            element[key] = options[key];
+        }
+        return element;
+    },
+    /**
+     * 添加事件监听器
+     * @param {String} type 
+     * @param {Function} listener 
+     */
+    addEventListener: function (type, listener) {
+        events.push({ type, listener });
+    },
+    /**
+     * 移除事件监听器
+     * @param {String} type 
+     * @param {Function} listener 
+     */
+    removeEventListener: function (type, listener) {
+        const index = events.findIndex(e => e.type === type && e.listener === listener);
+        if (index !== -1) {
+            events.splice(index, 1);
+        }
+    },
+    /**
+     * 派发事件
+     * @param {String} type 
+     * @param {Object} event 
+     */
+    dispatchEvent: function (type, event) {
+        events.forEach(e => {
+            if (e.type === type) {
+                e.listener(event);
+            }
+        });
+    },
+    /**
+     * 创建事件
+     */
+    YeteEvent: class extends Event {
+        /**
+         * 构造函数
+         * @param {String} type 
+         * @param {Object} options 
+         */
+        constructor(type, options) {
+            super(type, { bubbles: true, cancelable: true });
+            for (const key in options) {
+                this[key] = options[key];
+            }
+        }
+    },
 };
+
+/**
+ * 添加事件监听器
+ * @param {String} type 
+ * @param {Function} listener 
+ */
+obj.on = obj.addEventListener;
+/**
+ * 移除事件监听器
+ * @param {String} type 
+ * @param {Function} listener 
+ */
+obj.off = obj.removeEventListener;
+/**
+ * 派发事件
+ * @param {String} type 
+ * @param {Object} event 
+ */
+obj.emit = obj.dispatchEvent;
 
 // 监听 hashchange 事件，实现页面跳转
 window.addEventListener('hashchange', () => {
@@ -135,7 +245,11 @@ window.addEventListener('hashchange', () => {
     obj.toPage(path);
 });
 
-
+/**
+ * 获取文件类型
+ * @param {String} filePath 
+ * @returns {String}
+ */
 function getFileType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
     switch (ext) {
