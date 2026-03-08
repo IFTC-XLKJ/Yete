@@ -28,7 +28,7 @@ yete build && yete serve
 
 ## 许可证
 
-[MIT](https://github.com/yete-framework/yete/blob/main/LICENSE)
+[MIT](https://github.com/IFTC-XLKJ/Yete/blob/main/LICENSE)
 
 ## 联系作者
 
