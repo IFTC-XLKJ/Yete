@@ -28,7 +28,7 @@ yete build && yete serve
 
 ## 许可证
 
-[MIT](https://github.com/IFTC-XLKJ/Yete/blob/main/LICENSE)
+[MIT](https://github.com/IFTC-XLKJ/Yete?tab=MIT-1-ov-file)
 
 ## 联系作者
 
