@@ -1,5 +1,3 @@
-const { add } = require("dexie");
-
 /**
  * 自定义错误类
  */
@@ -7,6 +5,7 @@ class YeteError extends Error {
     /**
      * 构造函数
      * @param {String} message 错误信息
+     * @example new YeteError("Something went wrong.");
      */
     constructor(message) {
         super(message);
@@ -15,11 +14,22 @@ class YeteError extends Error {
 }
 /**
  * 页面基类
+ * @example
+ * class MyPage extends Page {
+ *   constructor() {
+ *     super("my-page");
+ *   }
+ *   render() {
+ *     return document.createElement('div', { className: 'page' });
+ *   }
+ * }
  */
 class Page {
     /**
      * 构造函数
      * @param {String} name 
+     * @example
+     * new Page("my-page");
      */
     constructor(name) {
         this.name = name;
@@ -27,21 +37,47 @@ class Page {
     /**
      * 渲染页面
      * @returns {HTMLElement}
+     * @example
+     * return document.createElement('div', { className: 'page' });
      */
     render() {
-        return document.createElement('div', { className: 'page' }, this.name);
+        return document.createElement('div', { className: 'page' });
     }
 }
 
+/**
+ * 页面数组
+ * @property {Page} page 页面对象
+ */
 const pages = [];
+/**
+ * 路由数组
+ * @property {String} path 路径
+ * @property {HTMLElement} page 页面
+ */
 const routes = [];
+/**
+ * 事件数组
+ * @property {String} name 事件名称
+ * @property {Function} callback 回调函数
+ */
 const events = [];
+let isStarted = false;
 
+let custom404Page = null;
+let custom502Page = null;
+
+/**
+ * 导出的对象
+ */
 const obj = {
     /**
      * 设置页面图标
      * @param {String} iconPath 
      * @returns 
+     * @throws {YeteError}
+     * @example
+     * setIcon("icon.png");
      */
     setIcon: function (iconPath) {
         const fileType = getFileType(iconPath);
@@ -63,6 +99,9 @@ const obj = {
     /**
      * 设置页面标题
      * @param {String} title 
+     * @throws {YeteError}
+     * @example
+     * setTitle("Yete");
      */
     setTitle: function (title) {
         document.title = title;
@@ -70,6 +109,8 @@ const obj = {
     /**
      * 配置路由
      * @param {Array<Object>} options
+     * @property {String} path 路径
+     * @property {HTMLElement} page 页面
      * @example 
      * options: [
      *   { path: '/', page: () => loadPage(HomePage) },
@@ -80,10 +121,26 @@ const obj = {
         console.log(options);
         routes.push(...options);
     },
+    /**
+     * 页面基类
+     * @example
+     * class MyPage extends Page {
+     *   constructor() {
+     *     super("my-page");
+     *   }
+     *   render() {
+     *     return document.createElement('div', { className: 'page' });
+     *   }
+     * }
+     */
     Page: Page,
     /**
      * 加载组件
      * @param {Page} page 
+     * @returns {HTMLElement}
+     * @throws {YeteError}
+     * @example
+     * loadPage(MyPage);
      */
     loadPage: function (page) {
         console.log(page);
@@ -96,14 +153,28 @@ const obj = {
     },
     /**
      * 启动程序
+     * @description 该方法只能调用一次
+     * @throws {YeteError}
+     * @example
+     * start();
      */
     start: function () {
+        if (isStarted) {
+            throw new YeteError("The program has already started.");
+        }
+        if (!routes.some(r => r.path === '/')) {
+            throw new YeteError("The route must contain a path '/'.");
+        }
+        isStarted = true;
         const path = location.hash.slice(1) || '/';
         obj.toPage(path);
     },
     /**
      * 加载 CSS 文件
      * @param {String} cssPath 
+     * @returns {Promise<void>}
+     * @example
+     * await loadCSS("index.css");
      */
     loadCSS: async function (cssPath) {
         return new Promise(async (resolve, reject) => {
@@ -119,6 +190,9 @@ const obj = {
     /**
      * 加载 JS 文件
      * @param {String} scriptPath 
+     * @returns {Promise<void>}
+     * @example
+     * await loadScript("index.js");
      */
     loadScript: async function (scriptPath) {
         return new Promise(async (resolve, reject) => {
@@ -134,16 +208,26 @@ const obj = {
     /**
      * 跳转到指定页面
      * @param {String} path 
+     * @param {String} message
+     * @throws {YeteError}
+     * @example
+     * toPage('/about');
      */
-    toPage: function (path) {
+    toPage: function (path, message = null) {
         location.hash = path;
         const page = routes.find(r => r.path === path);
         console.log(pages, page);
         if (page) {
             document.body.innerHTML = "";
             document.body.appendChild(page.page);
-            obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: false }));
+            obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: false, message }));
         } else {
+            if (custom404Page) {
+                document.body.innerHTML = "";
+                document.body.appendChild(custom404Page);
+                obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: true }));
+                return;
+            }
             document.body.innerHTML = "<center><h1>404 Not Found</h1><p>Power By Yete</p></center>";
             obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: true }));
             throw new YeteError("The page not found.");
@@ -154,6 +238,8 @@ const obj = {
      * @param {String} tag 
      * @param {Object} options 
      * @returns {HTMLElement}
+     * @example
+     * const button = newElement('Text', { className: 'btn', textContent: 'Click Me' });
      */
     newElement: function (tag, options = {}) {
         if (!UIElements[tag]) {
@@ -175,6 +261,8 @@ const obj = {
      * 添加事件监听器
      * @param {String} type 
      * @param {Function} listener 
+     * @example
+     * addEventListener('click', () => console.log('Clicked'));
      */
     addEventListener: function (type, listener) {
         events.push({ type, listener });
@@ -183,6 +271,8 @@ const obj = {
      * 移除事件监听器
      * @param {String} type 
      * @param {Function} listener 
+     * @example
+     * removeEventListener('click', () => console.log('Clicked'));
      */
     removeEventListener: function (type, listener) {
         const index = events.findIndex(e => e.type === type && e.listener === listener);
@@ -194,6 +284,8 @@ const obj = {
      * 派发事件
      * @param {String} type 
      * @param {Object} event 
+     * @example
+     * dispatchEvent('click', new YeteEvent("click", { bubbles: true, cancelable: true }));
      */
     dispatchEvent: function (type, event) {
         events.forEach(e => {
@@ -204,12 +296,19 @@ const obj = {
     },
     /**
      * 创建事件
+     * @param {String} type 
+     * @param {Object} options
+     * @returns {YeteEvent}
+     * @example
+     * const event = new YeteEvent("click", { bubbles: true, cancelable: true });
      */
     YeteEvent: class extends Event {
         /**
          * 构造函数
          * @param {String} type 
          * @param {Object} options 
+         * @example
+         * const event = new YeteEvent("click", { bubbles: true, cancelable: true });
          */
         constructor(type, options) {
             super(type, { bubbles: true, cancelable: true });
@@ -218,32 +317,109 @@ const obj = {
             }
         }
     },
+    /**
+     * 获取绑定的元素
+     * @returns {NodeList}
+     * @example
+     * const elements = getBinding();
+     */
+    getBinding: function () {
+        const elementsWithId = document.querySelectorAll('[yete-id]');
+        return elementsWithId;
+    },
+    /**
+     * 自定义 404 页面
+     * @description 当页面不存在时，会显示此页面
+     * @param {Page} page
+     * @example
+     * custom404(Custom404Page);
+     */
+    custom404: function (page = null) {
+        if (!page) {
+            custom404Page = null;
+            return;
+        }
+        const p = new page();
+        if (p instanceof Page) {
+            custom404Page = p.page;
+        } else {
+            throw new YeteError("The page not found.");
+        }
+    },
+    /**
+     * 自定义 502 错误页面
+     * @description 当页面有未捕获的错误被抛出时，会显示此页面
+     * @param {Page} page
+     * @example
+     * custom502(Custom502Page);
+     */
+    custom502: function (page = null) {
+        if (!page) {
+            custom502Page = null;
+            return;
+        }
+        const p = new page();
+        if (p instanceof Page) {
+            custom502Page = p.page;
+        } else {
+            throw new YeteError("The page not found.");
+        }
+    },
 };
 
 /**
  * 添加事件监听器
  * @param {String} type 
  * @param {Function} listener 
+ * @example
+ * on('click', () => console.log('Clicked'));
  */
 obj.on = obj.addEventListener;
 /**
  * 移除事件监听器
  * @param {String} type 
  * @param {Function} listener 
+ * @example
+ * off('click', () => console.log('Clicked'));
  */
 obj.off = obj.removeEventListener;
 /**
  * 派发事件
  * @param {String} type 
  * @param {Object} event 
+ * @example
+ * emit('click', new YeteEvent("click", { bubbles: true, cancelable: true }));
  */
 obj.emit = obj.dispatchEvent;
 
-// 监听 hashchange 事件，实现页面跳转
+window.addEventListener("error", function (event) {
+    const { message, filename, lineno, colno, error } = event;
+    if (custom502Page) {
+        document.body.innerHTML = "";
+        document.body.appendChild(custom502Page);
+        const errorMsgEl = document.getElementById("error-message");
+        const errorFilenameEl = document.getElementById("error-filename");
+        const errorLinenoEl = document.getElementById("error-lineno");
+        const errorColnoEl = document.getElementById("error-colno");
+        const errorErrorEl = document.getElementById("error-error");
+        if (errorMsgEl) errorMsgEl.innerText = message;
+        if (errorFilenameEl) errorFilenameEl.innerText = filename;
+        if (errorLinenoEl) errorLinenoEl.innerText = lineno;
+        if (errorColnoEl) errorColnoEl.innerText = colno;
+        if (errorErrorEl) errorErrorEl.innerText = error;
+        obj.emit('page-change', new obj.YeteEvent("page-change", { path, isError: true }));
+    } else {
+        document.body.innerHTML = `<center><h1>Have an error: "${message}" in "${filename}" at ${lineno}:${colno}</h1><p>Powsered by Yete.</p></center>`;
+        obj.emit('page-change', new obj.YeteEvent("page-change", { path, isError: true }));
+    }
+});
+
 window.addEventListener('hashchange', () => {
     const path = location.hash.slice(1) || '/';
     obj.toPage(path);
 });
+
+console.log("%cYete v" + YeteVersion, "border-radius: 16px; font-size: 64px; color: #fff; background-color: #007bff; padding: 5px;margin: 5px;");
 
 /**
  * 获取文件类型
