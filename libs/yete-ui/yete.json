@@ -8,5 +8,8 @@
             "style": null,
             "attr": ["id", "class"]
         }
-    }
+    },
+    "files": [
+        "Text.js"
+    ]
 }
