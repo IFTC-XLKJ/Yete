@@ -1,9 +1,9 @@
 # Yete
 
-Yete 是一个轻量级、可扩展的 Web 框架。使用 Dexie 库操作 IndexedDB，将资源文件缓存到浏览器中，能够减少加载时间和带宽消耗。<br>
-每次构建后，会重新下载一次资源文件，并缓存到浏览器中。<br>
-`libs` 目录下的文件不会视为资源文件，如需使用，请使用 `yete add <libdirpath>` 命令添加。
-开发文档：https://iftc.koyeb.app/docs/yete
+&nbsp;&nbsp;&nbsp;&nbsp;Yete 是一个轻量级、可扩展的 Web 框架。使用 Dexie 库操作 IndexedDB，将资源文件缓存到浏览器中，能够减少加载时间和带宽消耗。<br>
+&nbsp;&nbsp;&nbsp;&nbsp;每次构建后，会重新下载一次资源文件，并缓存到浏览器中。<br>
+&nbsp;&nbsp;&nbsp;&nbsp;`libs` 目录下的文件不会视为资源文件，如需使用，请使用 `yete add <libdirpath>` 命令添加。<br>
+&nbsp;&nbsp;&nbsp;&nbsp;开发文档：https://iftc.koyeb.app/docs/yete
 
 ## 快速开始
 
