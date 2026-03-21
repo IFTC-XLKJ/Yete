@@ -67,6 +67,8 @@ let isStarted = false;
 let custom404Page = null;
 let custom502Page = null;
 
+let searchParams = new URLSearchParams("");
+
 /**
  * 导出的对象
  */
@@ -560,7 +562,83 @@ const obj = {
             return response.headers;
         }
     },
+    /**
+     * 获取 URL 参数
+     * @example
+     * const params = searchParams;
+     */
+    searchParams: function () {
+        return searchParams;
+    },
+    /**
+     * 加载 UI
+     * @description 可通过 URL 或 XML 字符串加载 UI
+     * @param {String} str 
+     * @example
+     * await loadUI("https://example.com/ui.xml");
+     * loadUI(`<Yete><Text>Hello World</Text></Yete>`);
+     */
+    loadUI: async function (str) {
+        let isURL = false;
+        try {
+            new URL(str);
+            isURL = true;
+        } catch { }
+        if (isURL) {
+            const res = await fetch(str);
+            const text = await res.text();
+            return loadUI(text);
+        } else {
+            return loadUI(str);
+        }
+    }
 };
+
+function loadUI(xmlstring) {
+    console.log(xmlstring);
+    const parser = new DOMParser();
+    try {
+        const xmlDoc = parser.parseFromString(xmlstring, "text/xml");
+        console.dir(xmlDoc);
+        const root = xmlDoc.documentElement;
+        console.log(root);
+        if (root.tagName === "Yete") {
+            let html = "";
+            const rootNodes = root.childNodes;
+            console.log(rootNodes);
+            for (let i = 0; i < rootNodes.length; i++) {
+                const node = rootNodes[i];
+                console.log(node);
+                html += parseNode(node);
+            }
+            console.log(html);
+        } else {
+            throw new YeteError("Invalid XML string.");
+        }
+    } catch (error) {
+        throw new YeteError(`Failed to LoadUI : ${error.message}`);
+    }
+    function parseNode(node) {
+        const tagName = node.tagName;
+        if (node.nodeName === "#text") {
+            return node.textContent;
+        }
+        console.log(tagName, node.nodeName, node);
+        if (node instanceof NodeList) {
+            let html = "";
+            for (let i = 0; i < node.length; i++) {
+                html += parseNode(node[i]);
+            }
+            return html;
+        }
+        if (UIElements[tagName]) {
+            const htmlTagName = UIElements[tagName].html;
+            return `<${htmlTagName} style="${UIElements[tagName].style || ""}">${parseNode(node.childNodes)}</${htmlTagName}>`;
+        } else {
+            throw new YeteError(`Invalid tag name: ${tagName}`);
+        }
+    }
+}
 
 /**
  * 添加事件监听器
@@ -587,6 +665,7 @@ obj.off = obj.removeEventListener;
  */
 obj.emit = obj.dispatchEvent;
 
+
 window.addEventListener("error", function (event) {
     const { message, filename, lineno, colno, error } = event;
     if (custom502Page) {
@@ -604,13 +683,20 @@ window.addEventListener("error", function (event) {
         if (errorErrorEl) errorErrorEl.innerText = error;
         obj.emit('page-change', new obj.YeteEvent("page-change", { path, isError: true }));
     } else {
-        document.body.innerHTML = `<center><h1>Have an error: "${message}" in "${filename}" at ${lineno}:${colno}</h1><p>Powsered by Yete.</p></center>`;
+        document.body.innerHTML = `<center><h1>Have an error: "${message}" in "${filename}" at ${lineno}:${colno}</h1><p>Power by Yete.</p></center>`;
         obj.emit('page-change', new obj.YeteEvent("page-change", { path, isError: true }));
     }
 });
 
 window.addEventListener('hashchange', () => {
-    const path = location.hash.slice(1) || '/';
+    const fullpath = location.hash.slice(1) || '/';
+    console.log("[Yete]", "Full path", fullpath);
+    const SearchParams = fullpath.split("?").slice(1).join("?") || '';
+    const path = fullpath.split("?")[0];
+    const query = new URLSearchParams(SearchParams);
+    searchParams = query;
+    console.log("[Yete]", "Query", query);
+    console.log("[Yete]", "Navigate to", path);
     obj.toPage(path);
 });
 
