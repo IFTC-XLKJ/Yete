@@ -365,6 +365,161 @@ const obj = {
             throw new YeteError("The page not found.");
         }
     },
+    /**
+     * HTTP 请求
+     * @description HTTP 请求封装，提供更便捷的方式进行 HTTP 请求
+     * @example 
+     * const res = await HTTP.GET("https://example.com");
+     * const data = await res.json();
+     */
+    HTTP: class {
+        constructor() { }
+        /**
+         * GET 请求
+         * @param {String} url 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.GET("https://example.com");
+         * const data = await res.json();
+         */
+        static async GET(url, headers = {}) {
+            return await fetch(url, { headers });
+        }
+        /**
+         * POST 请求
+         * @param {String} url 
+         * @param {Object} body 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.POST("https://example.com", { name: "Yete" });
+         * const data = await res.json();
+         */
+        static async POST(url, body, headers = {}) {
+            return await fetch(url, { method: "POST", body, headers });
+        }
+        /**
+         * PUT 请求
+         * @param {String} url 
+         * @param {Object} body 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.PUT("https://example.com", { name: "Yete" });
+         * const data = await res.json();
+         */
+        static async PUT(url, body, headers = {}) {
+            return await fetch(url, { method: "PUT", body, headers });
+        }
+        /**
+         * DELETE 请求
+         * @param {String} url 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.DELETE("https://example.com");
+         * const data = await res.json();
+         */
+        static async DELETE(url, headers = {}) {
+            return await fetch(url, { method: "DELETE", headers });
+        }
+        /**
+         * PATCH 请求
+         * @param {String} url 
+         * @param {Object} body 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.PATCH("https://example.com", { name: "Yete" });
+         * const data = await res.json();
+         */
+        static async PATCH(url, body, headers = {}) {
+            return await fetch(url, { method: "PATCH", body, headers });
+        }
+        /**
+         * HEAD 请求
+         * @param {String} url 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.HEAD("https://example.com");
+         * const data = await res.json();
+         */
+        static async HEAD(url, headers = {}) {
+            return await fetch(url, { method: "HEAD", headers });
+        }
+        /**
+         * OPTIONS 请求
+         * @param {String} url 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.OPTIONS("https://example.com");
+         * const data = await res.json();
+         */
+        static async OPTIONS(url, headers = {}) {
+            return await fetch(url, { method: "OPTIONS", headers });
+        }
+        /**
+         * TRACE 请求
+         * @param {String} url 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.TRACE("https://example.com");
+         * const data = await res.json();
+         */
+        static async TRACE(url, headers = {}) {
+            return await fetch(url, { method: "TRACE", headers });
+        }
+        /**
+         * CONNECT 请求
+         * @param {String} url 
+         * @param {Object} headers 
+         * @returns {Promise<Response>}
+         * @example
+         * const res = await HTTP.CONNECT("https://example.com");
+         * const data = await res.json();
+         */
+        static async CONNECT(url, headers = {}) {
+            return await fetch(url, { method: "CONNECT", headers });
+        }
+        /**
+         * 读取流
+         * @param {Response} response 
+         * @param {Function} callback 
+         * @returns {Promise<void>}
+         * @example
+         * await HTTP.readStream(res, ({ chunk, done }) => { console.log(done, chunk); });
+         */
+        static async readStream(response, callback = ({ chunk, done }) => { console.log(done, chunk); }) {
+            if (!response.ok) {
+                throw new YeteError("Response is not ok.");
+            }
+            if (!response.body) {
+                throw new YeteError("Response body is not available.");
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        const finalChunk = decoder.decode();
+                        callback({ chunk: finalChunk || null, done: true });
+                        break;
+                    }
+                    const chunk = decoder.decode(value, { stream: true });
+                    callback({ chunk, done: false });
+                }
+            } catch (error) {
+                throw new YeteError(`Stream reading failed: ${error.message}`);
+            } finally {
+                reader.releaseLock();
+            }
+        }
+    },
 };
 
 /**
