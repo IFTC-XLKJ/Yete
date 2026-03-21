@@ -519,6 +519,46 @@ const obj = {
                 reader.releaseLock();
             }
         }
+        /**
+         * 读取响应体
+         * @param {Response} response 
+         * @param {String} type 
+         * @returns {Promise<any>}
+         * @example
+         * const data = await HTTP.readBody(res);
+         */
+        static async readBody(response, type = "text") {
+            if (!response.ok) {
+                throw new YeteError("Response is not ok.");
+            }
+            if (!response.body) {
+                throw new YeteError("Response body is not available.");
+            }
+            switch (type) {
+                case "text":
+                    return await response.text();
+                case "json":
+                    return await response.json();
+                case "blob":
+                    return await response.blob();
+                case "arrayBuffer":
+                    return await response.arrayBuffer();
+                case "formData":
+                    return await response.formData();
+                default:
+                    throw new YeteError("Invalid type.");
+            }
+        }
+        /**
+         * 读取响应头
+         * @param {Response} response 
+         * @returns {Promise<Headers>}
+         * @example
+         * const headers = await HTTP.readHeaders(res);
+         */
+        static async readHeaders(response) {
+            return response.headers;
+        }
     },
 };
 
