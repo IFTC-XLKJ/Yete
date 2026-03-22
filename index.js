@@ -232,7 +232,7 @@ const obj = {
             }
             document.body.innerHTML = "<center><h1>404 Not Found</h1><p>Power By Yete</p></center>";
             obj.emit('page-change', new obj.YeteEvent("page-change", { path, isNotFound: true }));
-            throw new YeteError("The page not found.");
+            console.error(new YeteError("The page not found."));
         }
     },
     /**
@@ -574,9 +574,10 @@ const obj = {
      * 加载 UI
      * @description 可通过 URL 或 XML 字符串加载 UI
      * @param {String} str 
+     * @returns {Promise<HTMLElement>}
      * @example
      * await loadUI("https://example.com/ui.xml");
-     * loadUI(`<Yete><Text>Hello World</Text></Yete>`);
+     * await loadUI(`<Yete><Text>Hello World</Text></Yete>`);
      */
     loadUI: async function (str) {
         let isURL = false;
@@ -594,24 +595,25 @@ const obj = {
     }
 };
 
+/**
+ * 加载 UI
+ * @param {String} xmlstring 
+ * @returns {HTMLElement}
+ */
 function loadUI(xmlstring) {
-    console.log(xmlstring);
     const parser = new DOMParser();
     try {
         const xmlDoc = parser.parseFromString(xmlstring, "text/xml");
-        console.dir(xmlDoc);
         const root = xmlDoc.documentElement;
-        console.log(root);
         if (root.tagName === "Yete") {
-            let html = "";
+            let html = "<div yete-root>";
             const rootNodes = root.childNodes;
-            console.log(rootNodes);
             for (let i = 0; i < rootNodes.length; i++) {
                 const node = rootNodes[i];
-                console.log(node);
                 html += parseNode(node);
             }
-            console.log(html);
+            html += "</div>";
+            return new DOMParser().parseFromString(html, "text/html").body.firstElementChild;
         } else {
             throw new YeteError("Invalid XML string.");
         }
@@ -623,7 +625,6 @@ function loadUI(xmlstring) {
         if (node.nodeName === "#text") {
             return node.textContent;
         }
-        console.log(tagName, node.nodeName, node);
         if (node instanceof NodeList) {
             let html = "";
             for (let i = 0; i < node.length; i++) {
@@ -633,7 +634,21 @@ function loadUI(xmlstring) {
         }
         if (UIElements[tagName]) {
             const htmlTagName = UIElements[tagName].html;
-            return `<${htmlTagName} style="${UIElements[tagName].style || ""}">${parseNode(node.childNodes)}</${htmlTagName}>`;
+            let attrs = "";
+            for (const i in UIElements[tagName].attr) {
+                const attr = UIElements[tagName].attr[i];
+                console.log(node.hasAttribute(attr), attr);
+                if (node.hasAttribute(attr)) {
+                    const value = node.getAttribute(attr);
+                    console.log(attr, value);
+                    if (value == "true") {
+                        attrs += ` ${attr == "id" ? `${"yete-id"}` : attr}`;
+                    } else {
+                        attrs += ` ${attr == "id" ? `${"yete-id"}` : attr}="${value}"`;
+                    }
+                }
+            }
+            return `<${htmlTagName} ${attrs} style="${UIElements[tagName].style || ""}">${parseNode(node.childNodes)}</${htmlTagName}>`;
         } else {
             throw new YeteError(`Invalid tag name: ${tagName}`);
         }
