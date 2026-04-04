@@ -13,6 +13,49 @@ class YeteError extends Error {
     }
 }
 /**
+ * 检查浏览器兼容性
+ * @throws {YeteError} 如果不兼容或无法判断则抛出错误
+ */
+(function checkBrowserCompatibility() {
+    const ua = navigator.userAgent;
+    let browser = null;
+    let version = 0;
+    if (/Edg\/(\d+)/.test(ua)) {
+        browser = 'Edge';
+        version = parseInt(ua.match(/Edg\/(\d+)/)[1], 10);
+    } else if (/Chrome\/(\d+)/.test(ua) && !/Chromium/.test(ua)) {
+        browser = 'Chrome';
+        version = parseInt(ua.match(/Chrome\/(\d+)/)[1], 10);
+    } else if (/Firefox\/(\d+)/.test(ua)) {
+        browser = 'Firefox';
+        version = parseInt(ua.match(/Firefox\/(\d+)/)[1], 10);
+    } else if (/Version\/(\d+)/.test(ua) && /Safari/.test(ua)) {
+        browser = 'Safari';
+        version = parseInt(ua.match(/Version\/(\d+)/)[1], 10);
+    }
+    console.log(browser, version);
+    const minVersions = {
+        'Chrome': 87,
+        'Firefox': 140,
+        'Safari': 18.4,
+        'Edge': 87
+    };
+    let isCompatible = false;
+    if (browser && minVersions[browser] !== undefined) {
+        if (version >= minVersions[browser]) {
+            isCompatible = true;
+        }
+    }
+    if (!isCompatible) {
+        const msg = browser
+            ? `您的浏览器版本过低 (${browser} ${version})，请使用 Chrome 71+, Firefox 69+, Safari 12.1+ 或 Edge 79+。`
+            : `无法识别您的浏览器环境，请使用现代浏览器 (Chrome, Firefox, Safari, Edge)。`;
+
+        alert(msg);
+        console.error(new YeteError('Browser incompatible'));
+    }
+})();
+/**
  * 页面基类
  * @example
  * class MyPage extends Page {
@@ -68,6 +111,8 @@ let custom404Page = null;
 let custom502Page = null;
 
 let searchParams = new URLSearchParams("");
+
+const hostname = location.hostname;
 
 /**
  * 导出的对象
@@ -592,6 +637,405 @@ const obj = {
         } else {
             return loadUI(str);
         }
+    },
+    /**
+     * 认证管理类
+     * @description 提供用户认证、令牌管理、授权验证等功能
+     */
+    Auth: class {
+        /**
+         * 构造函数
+         * @param {Object} options 配置选项
+         * @property {String} apiBaseUrl API 基础地址
+         * @property {String} tokenKey localStorage 中存储 token 的键名
+         */
+        constructor(options = {}) {
+            this.apiBaseUrl = options.apiBaseUrl || 'https://iftc.koyeb.app/api/auth';
+            this.tokenKey = options.tokenKey || 'auth_token';
+            this.checkInterval = options.checkInterval || 2000;
+            this.onAuthSuccess = options.onAuthSuccess || null;
+            this.onAuthFail = options.onAuthFail || null;
+        }
+
+        /**
+         * 获取存储的 auth_token
+         * @returns {String|null}
+         * @example
+         * const token = auth.getAuthToken();
+         */
+        getAuthToken() {
+            return localStorage.getItem(this.tokenKey);
+        }
+
+        /**
+         * 设置存储的 auth_token
+         * @param {String} token 
+         * @example
+         * auth.setAuthToken('your_token_here');
+         */
+        setAuthToken(token) {
+            localStorage.setItem(this.tokenKey, token);
+        }
+
+        /**
+         * 清除存储的 auth_token
+         * @example
+         * auth.clearAuthToken();
+         */
+        clearAuthToken() {
+            localStorage.removeItem(this.tokenKey);
+        }
+
+        /**
+         * 检查是否已授权
+         * @returns {Promise<Boolean>}
+         * @example
+         * if (auth.isAuthorized()) { ... }
+         */
+        async isAuthorized() {
+            return !!await cookieStore.get("ID");
+        }
+
+        /**
+         * 获取授权链接
+         * @param {String} redirectUrl 回调地址
+         * @returns {String}
+         * @example
+         * const url = auth.getAuthUrl(location.href);
+         */
+        getAuthUrl(redirectUrl) {
+            return `${this.apiBaseUrl}/token?redirect=${encodeURIComponent(redirectUrl)}`;
+        }
+
+        /**
+         * 发起授权请求
+         * @description 跳转到授权页面
+         * @param {String} redirectUrl 回调地址
+         * @example
+         * auth.requestAuth(location.href);
+         */
+        async requestAuth(redirectUrl) {
+            const url = this.getAuthUrl(redirectUrl);
+            const response = await fetch(url);
+            const json = await response.json();
+
+            if (json.code !== 200) {
+                throw new YeteError(json.msg || '获取授权令牌失败');
+            }
+
+            this.setAuthToken(json.data.token);
+            location.href = json.data.url;
+            return json;
+        }
+
+        /**
+         * 验证 auth_token 有效性
+         * @param {String} token 可选，不传则使用存储的 auth_token
+         * @returns {Promise<Boolean>}
+         * @example
+         * const isValid = await auth.verify();
+         */
+        async verify(token = null) {
+            const targetToken = token || this.getAuthToken();
+
+            if (!targetToken) {
+                throw new YeteError('未找到授权令牌');
+            }
+
+            const response = await fetch(`${this.apiBaseUrl}/verify?token=${targetToken}`);
+            const json = await response.json();
+
+            if (json.code === 200) {
+                await this.setCookie('ID', json.data.id, 365);
+                localStorage.setItem("ID", json.data.id);
+                return true;
+            }
+
+            return false;
+        }
+        /**
+         * 设置 cookie
+         * @param {String} name 键名
+         * @param {String} value 键值
+         * @param {Number} days 过期天数
+         */
+        async setCookie(name, value, days = 1) {
+            const expires = new Date();
+            expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+
+            try {
+                console.log(location.hostname);
+                await cookieStore.set({
+                    name,
+                    value,
+                    expires: expires.toISOString(),
+                    path: '/',
+                    domain: hostname,
+                    secure: true
+                });
+            } catch (error) {
+                console.warn('cookieStore not supported, falling back to document.cookie');
+                document.cookie = `${name}=${value}; expires=${expires.toUTCString()}; path=/`;
+            }
+        }
+
+        /**
+         * 获取 cookie
+         * @param {String} name 键名
+         * @returns {String|null}
+         */
+        async getCookie(name) {
+            try {
+                const cookies = await cookieStore.get(name);
+                return cookies ? cookies.value : null;
+            } catch (error) {
+                // 如果 cookieStore 不支持，降级到 document.cookie
+                console.warn('cookieStore not supported, falling back to document.cookie');
+                return this.getCookieFromDocument(name);
+            }
+        }
+
+        /**
+         * 从 document.cookie 获取 cookie（备用方案）
+         * @param {String} name 键名
+         * @returns {String|null}
+         */
+        getCookieFromDocument(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) {
+                    return c.substring(nameEQ.length, c.length);
+                }
+            }
+            return null;
+        }
+
+        /**
+         * 获取用户 ID
+         * @returns {String|null}
+         */
+        getUserId() {
+            return localStorage.getItem("ID");
+        }
+
+        /**
+         * 检查授权状态并等待授权完成
+         * @param {Function} callback 授权成功后的回调
+         * @param {Number} timeout 超时时间（毫秒）
+         * @returns {Promise<Object>}
+         * @example
+         * await auth.waitForAuth((userInfo) => {
+         *     console.log('用户 ID:', userInfo.id);
+         * });
+         */
+        async waitForAuth(callback, timeout = 60000) {
+            const url = new URL(location.href);
+            const authParam = url.searchParams.get('auth');
+
+            if (!authParam) {
+                throw new YeteError('缺少 auth 参数');
+            }
+
+            return new Promise((resolve, reject) => {
+                const startTime = Date.now();
+                const intervalId = setInterval(async () => {
+                    // 检查超时
+                    if (Date.now() - startTime > timeout) {
+                        clearInterval(intervalId);
+                        reject(new YeteError('授权超时'));
+                        return;
+                    }
+
+                    try {
+                        const json = await this.verify();
+                        if (json.code === 200) {
+                            clearInterval(intervalId);
+                            if (callback) callback(json.data);
+                            if (this.onAuthSuccess) this.onAuthSuccess(json.data);
+                            resolve(json);
+                        }
+                    } catch (error) {
+                        console.error('验证失败:', error);
+                    }
+                }, this.checkInterval);
+            });
+        }
+
+        /**
+         * 处理授权回调
+         * @description 在授权回调页面调用此方法
+         * @param {Function} successCallback 授权成功回调
+         * @param {Function} failCallback 授权失败回调
+         * @example
+         * auth.handleAuthCallback((userInfo) => {
+         *     document.write('授权成功，用户 ID: ' + userInfo.id);
+         * });
+         */
+        async handleAuthCallback(successCallback, failCallback) {
+            const url = new URL(location.href);
+            const authParam = url.searchParams.get('auth');
+
+            if (!authParam) {
+                return;
+            }
+
+            try {
+                const result = await this.waitForAuth(successCallback);
+                if (successCallback) {
+                    successCallback(result.data);
+                }
+            } catch (error) {
+                console.error('授权失败:', error);
+                if (failCallback) {
+                    failCallback(error);
+                }
+                if (this.onAuthFail) {
+                    this.onAuthFail(error);
+                }
+            }
+        }
+
+        /**
+         * 获取用户信息
+         * @returns {Promise<Object>}
+         * @example
+         * const userInfo = await auth.getUserInfo();
+         */
+        async getUserInfo() {
+            const res = await fetch(`${this.apiBaseUrl}/api/user/details?ID=${this.getUserId()}`);
+        }
+
+        /**
+         * 登出
+         * @example
+         * auth.logout();
+         */
+        logout() {
+            this.clearAuthToken();
+            location.reload();
+        }
+    },
+};
+
+/**
+ * 生成哈希值
+ * @description 与Java的用法一致
+ * @returns {Number}
+ * @example
+ * const hash = 'hello world'.hashCode();
+ */
+String.prototype.hashCode = function () {
+    let hash = 0;
+    for (let i = 0; i < this.length; i++) {
+        const char = this.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash |= 0;
+    }
+    return hash;
+};
+
+/**
+ * 响应事件监听
+ */
+Response.prototype.events = {};
+/**
+ * 是否正在监听响应事件
+ */
+Response.prototype.listening = false;
+/**
+ * 添加响应事件监听
+ * @param {string} eventName 事件名
+ * @param {function} callback 回调函数
+ * @example
+ * response.on('eventName', function() {})
+ */
+Response.prototype.on = function (eventName, callback) {
+    if (!this.events[eventName]) {
+        this.events[eventName] = [];
+    }
+    this.events[eventName].push(callback);
+};
+/**
+ * 触发事件
+ * @param {string} eventName 事件名
+ * @param {...any} args 参数
+ * @example
+ * response.emit('eventName', '参数1', '参数2', ...);
+ */
+Response.prototype.emit = function (eventName, ...args) {
+    if (this.events[eventName]) {
+        this.events[eventName].forEach(callback => callback(...args));
+    }
+};
+/**
+ * 移除事件监听
+ * @param {string} eventName 事件名
+ * @param {Function} callback 回调函数
+ * @example
+ * response.off('eventName', callback);
+ */
+Response.prototype.off = function (eventName, callback) {
+    if (this.events[eventName]) {
+        this.events[eventName] = this.events[eventName].filter(cb => cb !== callback);
+    }
+};
+/**
+ * 开始同步监听（开启后将无法使用异步）
+ * @returns {Promise<void>}
+ * @example
+ * response.listen();
+ */
+Response.prototype.listen = async function () {
+    if (this.listening) {
+        throw new YeteError('已开启同步监听，请勿重复开启');
+    }
+    const res = this;
+    const headers = res.headers;
+    this.listening = true;
+    const contentType = headers.get('Content-Type');
+    if (contentType && contentType.includes('application/json')) {
+        const json = await res.json();
+        res.emit('res', {
+            type: 'json',
+            data: json,
+        });
+    } else if (contentType && contentType.includes('text/html')) {
+        const text = await res.text();
+        const doc = new DOMParser().parseFromString(text, "text/html");
+        res.emit('res', {
+            type: 'html',
+            data: doc,
+        });
+    } else if (contentType && contentType.includes('text/plain')) {
+        const text = await res.text();
+        res.emit('res', {
+            type: 'text',
+            data: text,
+        })
+    } else if (contentType && contentType.includes('text/xml')) {
+        const text = await res.text();
+        const xmlDoc = new DOMParser().parseFromString(text, "text/xml");
+        res.emit('res', {
+            type: 'xml',
+            data: xmlDoc,
+        });
+    } else if (contentType && contentType.includes('text/event-stream')) {
+        obj.HTTP.readStream(res, ({ chunk, done }) => {
+            res.emit('res', {
+                type: 'stream',
+                data: chunk,
+                done: done,
+            });
+        });
+    } else {
+        const blob = await res.blob();
+        res.emit('res', {
+            type: 'blob',
+            data: blob,
+        });
     }
 };
 
