@@ -938,6 +938,72 @@ String.prototype.hashCode = function () {
 };
 
 /**
+ * 将任意进制的数字转换为十进制(支持小数)
+ * @param {Number} fromRadix - 源进制 (2-36)
+ * @param {Number} toRadix - 目标进制 (2-36)
+ * @returns {String} - 转换后的目标进制的字符串
+ * @example
+ * const result = "10.1".convertBase(2, 10); // 二进制 "10.1" 转换为十进制 "2.5"
+ */
+String.prototype.convertBase = function (fromRadix = 10, toRadix = 10) {
+    return convertBase(this, fromRadix, toRadix);
+};
+
+/**
+ * 将任意进制的数字转换为另一种进制的数字
+ * @param {string} numStr - 输入的数字字符串（例如 "10.1"）
+ * @param {number} fromRadix - 源进制 (2-36)
+ * @param {number} toRadix - 目标进制 (2-36)
+ * @returns {string} - 转换后的字符串
+ */
+function convertBase(numStr, fromRadix, toRadix) {
+    if (fromRadix < 2 || fromRadix > 36 || toRadix < 2 || toRadix > 36) {
+        throw new YeteError("进制必须在 2 到 36 之间");
+    }
+    const decimalValue = convertToDecimal(numStr, fromRadix);
+    return decimalValue.toString(toRadix);
+}
+
+/**
+ * 将任意进制（2-36）的字符串转换为十进制数字（支持小数）
+ * @param {string} str - 输入的数字字符串 (例如 "10.1")
+ * @param {number} radix - 进制数 (例如 2, 8, 16)
+ * @returns {number} - 转换后的十进制数
+ */
+function convertToDecimal(str, radix) {
+    if (radix < 2 || radix > 36) {
+        throw new YeteError("进制必须在 2 到 36 之间");
+    }
+    const input = str.toLowerCase();
+    const parts = input.split('.');
+    const integerPart = parts[0];
+    const fractionalPart = parts[1] || '';
+    let result = 0;
+    let isNegative = input.startsWith('-');
+    if (integerPart && integerPart !== '-') {
+        const cleanInt = integerPart.replace('-', '');
+        result = parseInt(cleanInt, radix);
+        if (isNaN(result)) {
+            throw new YeteError(`整数部分 "${integerPart}" 包含非法字符`);
+        }
+    }
+    let fractionValue = 0;
+    for (let i = 0; i < fractionalPart.length; i++) {
+        const char = fractionalPart[i];
+        const digitValue = parseInt(char, 36);
+        if (isNaN(digitValue) || digitValue >= radix) {
+            throw new YeteError(`小数部分 "${char}" 超出了进制 ${radix} 的范围`);
+        }
+        fractionValue += digitValue * Math.pow(radix, -(i + 1));
+    }
+    result = result + fractionValue;
+    if (isNegative) {
+        result = -result;
+    }
+    return result;
+}
+
+/**
  * 响应事件监听
  */
 Response.prototype.events = {};
