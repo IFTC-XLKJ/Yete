@@ -32,13 +32,17 @@ class YeteError extends Error {
     } else if (/Version\/(\d+)/.test(ua) && /Safari/.test(ua)) {
         browser = 'Safari';
         version = parseInt(ua.match(/Version\/(\d+)/)[1], 10);
+    } else if (/VVBrowser\/(\d+)/.test(ua)) {
+        browser = 'VVBrowser';
+        version = parseInt(ua.match(/VVBrowser\/(\d+)/)[1], 10);
     }
     console.log(browser, version);
     const minVersions = {
         'Chrome': 87,
         'Firefox': 140,
         'Safari': 18.4,
-        'Edge': 87
+        'Edge': 87,
+        'VVBrowser': 1
     };
     let isCompatible = false;
     if (browser && minVersions[browser] !== undefined) {
@@ -48,8 +52,8 @@ class YeteError extends Error {
     }
     if (!isCompatible) {
         const msg = browser
-            ? `您的浏览器版本过低 (${browser} ${version})，请使用 Chrome 71+, Firefox 69+, Safari 12.1+ 或 Edge 79+。`
-            : `无法识别您的浏览器环境，请使用现代浏览器 (Chrome, Firefox, Safari, Edge)。`;
+            ? `您的浏览器版本过低 (${browser} ${version})，请使用 Chrome 71+, Firefox 69+, Safari 12.1+, Edge 79+ 或 VVBrowser 1+ 浏览器。`
+            : `无法识别您的浏览器环境，请使用现代浏览器 (Chrome, Firefox, Safari, Edge, VVBrowser)。`;
 
         alert(msg);
         console.error(new YeteError('Browser incompatible'));
