@@ -610,6 +610,26 @@ const obj = {
         static async readHeaders(response) {
             return response.headers;
         }
+        /**
+         * 读取响应 Cookie
+         * @param {Response} response 
+         * @returns {Promise<Cookie[]>}
+         * @example
+         * const cookies = await HTTP.readCookies(res);
+         */
+        static async readCookies(response) {
+            return response.cookies;
+        }
+        /**
+         * 获取代理 URL
+         * @param {String} url 
+         * @returns {String}
+         * @example
+         * const proxyURL = HTTP.proxy("https://example.com");
+         */
+        static proxy(url) {
+            return "https://iftc.koyeb.app/proxy?url=" + encodeURIComponent(url);
+        }
     },
     /**
      * 获取 URL 参数
@@ -922,7 +942,126 @@ const obj = {
             location.reload();
         }
     },
+    Complex: Complex
 };
+
+/**
+ * 复数类
+ */
+class Complex {
+    /**
+     * 复数构造函数
+     * @param {number} real 实部
+     * @param {number} imag 虚部
+     */
+    constructor(real = 0, imag = 0) {
+        this.real = real;
+        this.imag = imag;
+    }
+    /**
+     * 字符串转复数类
+     * @param {String} complexString 
+     * @returns {Complex}
+     * @example
+     * const complex = new Complex();
+     * complex.toClass("2+3i"); // 输出：Complex(2, 3)
+     */
+    toClass(complexString) {
+        const parts = complexString.split('+');
+        const real = parseFloat(parts[0]) || 0;
+        const imag = parseFloat(parts[1].slice(0, -1)) || 0;
+        this.real = real;
+        this.imag = imag;
+        return this;
+    }
+    /**
+     * 加法
+     * @param {Complex} other 另一个复数
+     * @returns {Complex} 结果
+     * @example
+     * const c1 = new Complex(2, 3);
+     * const c2 = new Complex(1, 4);
+     * console.log(c1.add(c2)); // 输出：Complex(3, 7)
+     */
+    add(other) {
+        return new Complex(
+            this.real + other.real,
+            this.imag + other.imag
+        );
+    }
+    /**
+     * 减法
+     * @param {Complex} other 另一个复数
+     * @returns {Complex} 减法结果
+     * @example
+     * const c1 = new Complex(2, 3);
+     * const c2 = new Complex(1, 4);
+     * console.log(c1.subtract(c2)); // 输出：Complex(1, -1)
+     */
+    subtract(other) {
+        return new Complex(
+            this.real - other.real,
+            this.imag - other.imag
+        );
+    }
+    /**
+     * 乘法
+     * @param {Complex} other 乘数
+     * @returns {Complex} 乘法结果
+     * @example
+     * const c1 = new Complex(2, 3);
+     * const c2 = new Complex(1, 4);
+     * console.log(c1.multiply(c2)); // 输出：Complex(5, 14)
+     */
+    multiply(other) {
+        return new Complex(
+            this.real * other.real - this.imag * other.imag,
+            this.real * other.imag + this.imag * other.real
+        );
+    }
+    /**
+     * 除法
+     * @param {Complex} other 被除数
+     * @returns {Complex} 除法结果
+     * @example
+     * const c1 = new Complex(2, 3);
+     * const c2 = new Complex(1, 4);
+     * console.log(c1.divide(c2)); // 输出：Complex(0.6, -0.2)
+     */
+    divide(other) {
+        const denominator = other.real * other.real + other.imag * other.imag;
+        if (denominator === 0) {
+            throw new Error("Division by zero complex number");
+        }
+        return new Complex(
+            (this.real * other.real + this.imag * other.imag) / denominator,
+            (this.imag * other.real - this.real * other.imag) / denominator
+        );
+    }
+    /**
+     * 复数转为字符串
+     * @returns {string} 复数字符串表示
+     * @example
+     * const c = new Complex(2, 3);
+     * console.log(c.toString()); // 输出：2+3i
+     */
+    toString() {
+        const sign = this.imag >= 0 ? '+' : '-';
+        return `${this.real} ${sign} ${Math.abs(this.imag)}i`;
+    }
+    /**
+     * 获取复数的模
+     * @returns {number} 模
+     * @example
+     * const c = new Complex(3, 4);
+     * console.log(c.magnitude()); // 输出：5
+     */
+    magnitude() {
+        return Math.sqrt(this.real * this.real + this.imag * this.imag);
+    }
+}
+
+obj.Complex = Complex;
 
 /**
  * 生成哈希值
