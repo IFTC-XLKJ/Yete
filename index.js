@@ -942,7 +942,32 @@ const obj = {
             location.reload();
         }
     },
-    Complex: Complex
+    Complex: Complex,
+    /**
+     * 屏幕颜色选择器
+     * @description 该功能必须由用户主动触发（如点击按钮）才行。
+     * @returns {Promise<string>} 十六进制颜色值(如#FF0000)
+     * @throws {YeteError} 如果用户取消了选择或浏览器不支持 EyeDropper API
+     * @example
+     * button.addEventListener('click', async () => {
+     *   const color = await colorPicker();
+     *   console.log(color);
+     * })
+     */
+    colorPicker: function () {
+        if (!globalThis.EyeDropper) {
+            throw new YeteError("Your browser does not support the EyeDropper API. Please use a compatible browser (Chrome 95+, Edge 95+, or Opera 81+).");
+        }
+        const eyeDropper = new EyeDropper();
+        const abortController = new AbortController();
+        return eyeDropper.open({ signal: abortController.signal }).then(result => result.sRGBHex).catch(error => {
+            if (error.name === 'AbortError') {
+                throw new YeteError('用户取消了选择');
+            } else {
+                throw error;
+            }
+        });
+    }
 };
 
 /**
