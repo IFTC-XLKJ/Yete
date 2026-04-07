@@ -9,7 +9,7 @@
 
 1. 下载 Yete CLI：
    - [Windows x64](https://dbmp-xbgmorqeur6oh81z.database.nocode.cn/storage/v1/object/public/files/yete.exe "yete.exe")
-   - [Linux arm64](https://dbmp-xbgmorqeur6oh81z.database.nocode.cn/storage/v1/object/public/files/yete "yete")
+   - [Linux arm64(适应于Termux)](https://dbmp-xbgmorqeur6oh81z.database.nocode.cn/storage/v1/object/public/files/yete "yete")
    - [CLI源文件(其他操作系统请自行编译或直接使用 Txiki.js 运行)](https://dbmp-xbgmorqeur6oh81z.database.nocode.cn/storage/v1/object/public/files/yete.zip "yete.zip")
 
 2. 创建并构建项目：
